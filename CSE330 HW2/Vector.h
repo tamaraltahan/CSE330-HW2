@@ -1,203 +1,251 @@
-// Vector ADT according to M.A. Weiss textbook
-// Data Structures and Algorithm Analysis in C++
-// (DSAAC++)
+// Adopted from M.A. Weiss, DSAAC++ textbook
+// by KV, Jan 2020
 
+//#pragma once
 #ifndef VECTOR_H
 #define VECTOR_H
 
-#include <algorithm>
+//#include <algorithm>  // for swap???
+#include <cstdlib>  // KV trying ... 
 #include <iostream>
-#include <cassert>   // change KV
-//#include <stdexcept>
+#include <cassert>   // KV prefers assert ... 
+
+//#include <stdexcept>     
 //#include "dsexceptions.h"
 
 template <typename T>
 class Vector
 {
 public:
-    Vector(int initsize = 0)
-        : theSize(initsize), theCapacity(initsize + SPARE_CAPACITY)
-    {
-        objects = new T[theCapacity];
-    }
+	explicit Vector(int initSize = 0)
+		: theSize{ initSize }, theCapacity{ initSize + SPARE_CAPACITY }
+	{ data = new T[theCapacity]; }
 
-    Vector(const Vector& rhs)
-        : theSize(rhs.theSize), theCapacity(rhs.theCapacity), objects(0)
-    {
-        objects = new T[theCapacity];
-        for (int k = 0; k < theSize; ++k)
-            objects[k] = rhs.objects[k];
-    }
+	Vector(int initSize, int initValue)
+		:theSize(initSize), theCapacity(initSize + SPARE_CAPACITY)
+	{
+		data = new T[theCapacity];
+		for (int i = 0; i < theCapacity; i++)
+			data[i] = initValue;
 
-    Vector& operator= (const Vector& rhs)
-    {
-        Vector copy(rhs);     // a1ternative; KV
-        std::swap(*this, copy);
-        return *this;
-    }
+	}
+	Vector(const Vector& rhs)
+		: theSize{ rhs.theSize }, theCapacity{ rhs.theCapacity }, data{ nullptr }
+	{
+		data = new T[theCapacity];
+		for (int k = 0; k < theSize; ++k)
+			data[k] = rhs.data[k];
+	}
 
-    ~Vector()
-    {
-        delete[] objects;
-    }
+	Vector& operator= (const Vector& rhs)
+	{
+		Vector copy = rhs;
+		std::swap(*this, copy);
+		return *this;
+	}
 
-    bool empty() const
-    {
-        return size() == 0;
-    }
+	~Vector()
+	{
+		delete[] data;
+	}
 
-    int size() const
-    {
-        return theSize;
-    }
+	Vector(Vector&& rhs)
+		: theSize{ rhs.theSize }, theCapacity{ rhs.theCapacity }, data{ rhs.data }
+	{
+		rhs.data = nullptr;
+		rhs.theSize = 0;
+		rhs.theCapacity = 0;
+	}
 
-    int capacity() const
-    {
-        return theCapacity;
-    }
+	Vector& operator= (Vector&& rhs)
+	{
+		std::swap(theSize, rhs.theSize);
+		std::swap(theCapacity, rhs.theCapacity);
+		std::swap(data, rhs.data);
 
-    T& operator[](int index)
-    {
-        assert(index >= 0 && index < theSize);
-        return objects[index];
-    }
+		return *this;
+	}
 
-    const T& operator[](int index) const
-    {
-        assert(index >= 0 && index < theSize);
-        return objects[index];
-    }
+	bool empty() const
+	{
+		return size() == 0;
+	}
+	int size() const
+	{
+		return theSize;
+	}
+	int capacity() const
+	{
+		return theCapacity;
+	}
 
-    void resize(int newSize)
-    {
-        if (newSize > theCapacity)
-            reserve(newSize * 2);
-        theSize = newSize;
-    }
+	T& operator[](int index)
+	{
+		/*
+#ifndef NO_CHECK
+		if (index < 0 || index >= size())
+			throw ArrayIndexOutOfBoundsException{ };
+#endif
+*/
+		assert(index >= 0 && index < theSize);
+		return data[index];
+	}
 
-    void reserve(int newCapacity)
-    {
-        if (newCapacity < theSize)
-            return;
+	const T& operator[](int index) const
+	{
+		/*
+#ifndef NO_CHECK
+		if (index < 0 || index >= size())
+			throw ArrayIndexOutOfBoundsException{ };
+#endif
+*/
+		assert(index >= 0 && index < theSize);
+		return data[index];
+	}
 
-        T* newArray = new T[newCapacity];
-        for (int k = 0; k < theSize; ++k)
-            newArray[k] = objects[k]; //std::move( objects[ k ] );
+	void resize(int newSize)
+	{
+		if (newSize > theCapacity)
+			reserve(newSize * 2);
+		theSize = newSize;
+	}
 
-        theCapacity = newCapacity;
-        std::swap(objects, newArray);
-        delete[] newArray;
-    }
+	void reserve(int newCapacity)
+	{
+		if (newCapacity < theSize)
+			return;
 
+		T* newArray = new T[newCapacity];
+		for (int k = 0; k < theSize; ++k)
+			newArray[k] = std::move(data[k]);
 
-    void push_back(const T& x)
-    {
-        if (theSize == theCapacity)
-            reserve(2 * theCapacity + 1);
-        objects[theSize++] = x;
-    }
+		theCapacity = newCapacity;
+		std::swap(data, newArray);
+		delete[] newArray;
+	}
 
-    void pop_back()
-    {
-        assert(!empty());
-        --theSize;
-    }
+	void push_back(const T& x)
+	{
+		if (theSize == theCapacity)
+			reserve(2 * theCapacity + 1);
+		data[theSize++] = x;
+	}
 
-    const T& back() const
-    {
-        assert(!empty());
-        return objects[theSize - 1];
-    }
+	void push_back(T&& x)
+	{
+		if (theSize == theCapacity)
+			reserve(2 * theCapacity + 1);
+		data[theSize++] = std::move(x);
+	}
 
-    const T& front() const
-    {
-        assert(!empty());
-        return objects[0];
-    }
+	void pop_back()
+	{
+		assert(theSize >= 1);
+		/*
+		if (empty())
+			throw UnderflowException{ };
+			*/
+		--theSize;
+	}
 
-    typedef T* iterator;
-    typedef const T* const_iterator;
+	const T& back() const
+	{
+		/*if (empty())
+			throw UnderflowException{ };
+			*/
+		assert(theSize >= 1);
+		return data[theSize - 1];
+	}
 
-    iterator begin()
-    {
-        return &objects[0];
-    }
-    const_iterator begin() const
-    {
-        return &objects[0];
-    }
-    iterator end()
-    {
-        return &objects[size()];
-    }
-    const_iterator end() const
-    {
-        return &objects[size()];
-    }
+	// Iterators (new concept)
+	typedef T* iterator;
+	typedef const T* const_iterator;
 
-    static const int SPARE_CAPACITY = 2;
+	iterator begin()
+	{
+		return &data[0];
+	}
+	const_iterator begin() const
+	{
+		return &data[0];
+	}
+	iterator end()
+	{
+		return &data[size()];
+	}
+	const_iterator end() const
+	{
+		return &data[size()];
+	}
 
+	static const int SPARE_CAPACITY = 2;
+	//**************** LAB3/HW2 start **************************************
 
-    //**************** LAB3/HW2 start **************************************
+	void erase(int k) {
+		if (k == theSize - 1) {
+			pop_back();
+		}
+		else {
+			for (int i = k; i < theSize - 1; ++i) {
+				data[i] = data[i + 1];
+			}
+			pop_back();
+		}
 
-    void erase(int k) {
-        if (k == theSize - 1) {
-            pop_back();
-        }
-        else {
-            for (int i = k; k < theSize - 1; ++i) {
-                objects[i] = objects[i + 1];
-            }
-        }
+	}
 
-    }
+	void insert(int k, T x) {
+		if (k == theSize + 1) {
+			push_back(x);
+		}
+		else {
+			for (int i = theSize; i >= k; --i) {
+				data[i] = data[i - 1];
+			}
+			data[k] = x;
+		}
+	}
 
-    void insert(int k, T x) {
-        if (k == theSize + 1) {
-            push_back(x);
-        }
-        else {
-            for (int i = theSize; k >= k; --i) {
-                objects[i] = objects[i - 1];
-            }
-            objects[k] = x;
-        }
-    }
-   
-    void erase(iterator itr)
-    {
-        //given a pointer to an element in the array
-        //how do i access members of the array in an element by element way without indices?
-        if (itr == &objects[theSize - 1]) {
-            pop_back();
-        }
-        else {
-            for (iterator i = itr; i != end(); ++i) {
-                ++i;
-            }
+	void erase(iterator itr)
+	{
+		if (itr == &data[theSize - 1]) {
+			pop_back();
+		}
+		else {
+			iterator itr2 = itr + 1;
 
-        }
+			while (itr2 != &data[theSize-1]) {
+				*itr = *itr2;
+				itr++;
+				itr2++;
+			}
+		}
+	}
 
-    }
+	void insert(iterator itr, T x)
+	{
+		if (itr == end()) {
+			push_back(x);
+		}
+		else {
+			iterator itr2 = end();
+			iterator itr3 = &data[theSize - 1];
 
-    void insert(iterator itr, T x) 
-    {
-        if (itr == &objects[theSize - 1]) {
-            push_back(x);
-        }
-        else{
-            for (iterator i = &objects[theSize]; i != itr; --i) {
-                --i;
-            }
-        }
+			while (itr2 != itr) {
+				*itr2 = *itr3;
 
-    }
-    //**************** LAB3/HW2 end ***************************************
+				itr3--;
+				itr2--;
+			}
+			*itr = x;
+		}
+	}
+	//**************** LAB3/HW2 end ***************************************
 
 private:
-    int theSize;
-    int theCapacity;
-    T* objects;
+	int theSize;
+	int theCapacity;
+	T* data;
 };
 
 #endif
